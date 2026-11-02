@@ -1,4 +1,4 @@
-import { CheckCircle, AlertTriangle, TrendingDown, Clock, IndianRupee } from 'lucide-react';
+import { CheckCircle, TrendingDown, Clock, IndianRupee } from 'lucide-react';
 import type { SimulationResults, StrategyResult } from '../lib/calculator';
 import { formatINR, formatINRPaise, formatDuration } from '../lib/calculator';
 
