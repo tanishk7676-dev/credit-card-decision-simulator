@@ -1,170 +1,135 @@
 # Credit Card Decision Simulator
 
-A free, interactive financial education tool for first-time credit card users in India.
+An interactive financial education project for people learning how credit card repayment choices affect interest, total repayment, and time to clear a balance.
 
-## What It Does
+> **Live website:** [credit-card-decision-simulator.vercel.app](https://credit-card-decision-simulator.vercel.app/)  
+> The live website currently shows the original version. The Signal Modern redesign on this feature branch has not been merged or deployed.
 
-Helps young adults (18–25) understand how different credit card repayment decisions affect:
-- The **total cost** of a purchase
-- The **amount of interest** paid
-- The **time required** to clear a balance
+**GitHub repository:** [tanishk7676-dev/credit-card-decision-simulator](https://github.com/tanishk7676-dev/credit-card-decision-simulator)
 
-Users can compare three repayment strategies:
-- **A. Pay the full statement balance** — demonstrates potential zero-interest outcome under grace-period conditions
-- **B. Pay a fixed monthly amount** — shows how a consistent payment accelerates repayment
-- **C. Pay only the Minimum Amount Due** — illustrates the high long-term cost of minimum-only payments
+## Motivation and audience
 
----
+Credit card interest and repayment terms can be difficult to understand before using a card. This project makes the effect of different repayment approaches easier to explore through immediate, side-by-side estimates.
 
-## Quick Start
-
-### Prerequisites
-- Node.js v18 or later
-- npm v9 or later
-
-### Install and Run
-
-```bash
-# Install dependencies
-npm install
-
-# Start development server
-npm run dev
-```
-
-Open [http://localhost:5173](http://localhost:5173) in your browser.
-
-### Build for Production
-
-```bash
-npm run build
-npm run preview
-```
-
-### Run Tests
-
-```bash
-npm test
-```
-
----
+It is intended primarily for first-time credit card users and young adults in India who want to learn about repayment trade-offs. It is an educational simulator, not a financial planning tool or a substitute for an issuer's terms.
 
 ## Features
 
-| Feature | Status |
-|---------|--------|
-| Fresh purchase scenario | ✅ |
-| Existing balance scenario | ✅ |
-| Quick-pick example purchases (smartphone, laptop, etc.) | ✅ |
-| APR input with educational tooltip | ✅ |
-| Three repayment strategies with full calculation | ✅ |
-| Declining minimum payment (illustrative formula) | ✅ |
-| Insufficient payment detection | ✅ |
-| Interactive area chart (balance + cumulative paid views) | ✅ |
-| Educational explanations (accordion, context-aware) | ✅ |
-| Prominent financial disclosures | ✅ |
-| Simulation assumptions panel | ✅ |
-| Input validation with error messages | ✅ |
-| Responsive design (mobile + desktop) | ✅ |
-| Indian Rupee formatting with Indian digit grouping | ✅ |
-| Automated financial calculation tests | ✅ |
+- Fresh-purchase and existing-balance scenarios.
+- Quick-pick example purchase amounts and Indian-formatted rupee inputs.
+- APR entry with an educational explanation and input validation.
+- Three repayment strategies: pay in full, pay a fixed amount monthly, or pay an illustrative minimum.
+- Interactive monthly-payment slider with results that update as the amount changes.
+- Repayment comparison showing principal, interest, total repayment, payoff time, and cost bars.
+- Repayment chart with Balance and Total Paid views, plus an accessible data-table alternative.
+- Interactive decorative credit-card visualization with restrained pointer and keyboard tilt; motion respects reduced-motion preferences.
+- Context-aware educational explanations, assumptions, and financial disclosures.
+- Responsive layout and Indian Rupee formatting.
 
----
+## Screenshots
 
-## Financial Calculation Model
+Screenshots will be added here when captures of the redesigned interface are available.
 
-### Interest Rate Conversion
+## Financial calculation model
 
-```
+The simulator uses a simplified monthly-interest model for illustration. It does not reproduce every card issuer's billing method.
+
+### Interest rate conversion
+
+```text
 Monthly Periodic Rate (MPR) = APR ÷ 12
 ```
 
-**Educational simplification.** Actual credit card issuers may use daily compounding or other methods. Monthly compounding is used here because it maps cleanly to billing cycles and is transparent for educational purposes.
+### Each billing cycle
 
-### Each Billing Cycle
-
-```
+```text
 interest   = opening_balance × MPR
 pre_pay    = opening_balance + interest
 payment    = amount due under the active strategy (capped at pre_pay)
 closing    = pre_pay − payment
 ```
 
-### Strategy A — Full Payment (Grace Period)
+### Strategy A — Pay in full
 
-- **Fresh purchase:** If the user pays the full statement balance by the due date with no prior revolving balance, zero interest is charged (grace period applies). Total repaid = purchase amount.
-- **Existing balance:** One month of interest is charged; paying in full stops further accrual.
+- **Fresh purchase:** Models a potential grace-period outcome: zero interest if the full statement balance is paid by the due date and the issuer's eligibility conditions are met.
+- **Existing balance:** Models one month of interest before the balance is paid. Actual interest timing and grace-period eligibility depend on card terms.
 
-### Strategy B — Fixed Monthly Payment
+### Strategy B — Fixed monthly payment
 
-- Constant payment each cycle until balance reaches zero.
-- Final payment is capped at the remaining amount owed (not the full fixed amount).
-- If the payment ≤ initial monthly interest, the simulation flags this as insufficient and explains why.
+- Applies a fixed payment each cycle until the balance clears, with the final payment capped at the amount owed.
+- Flags a payment at or below the initial monthly interest as insufficient to reduce the balance.
 
-### Strategy C — Minimum Payment (Illustrative)
+### Strategy C — Minimum payment (illustrative)
 
-```
+```text
 minimum_due = max(5% × pre_pay, ₹200)
-payment     = min(minimum_due, pre_pay)   ← caps at amount owed
+payment     = min(minimum_due, pre_pay)
 ```
 
-**This formula is illustrative only.** There is no single universal minimum payment rule for Indian credit cards. Each issuer defines its own formula. This simulator uses a simplified educational example.
+This is an illustrative formula, not a universal Indian credit-card rule. Issuers use their own terms and formulas. Results depend on the inputs and assumptions; the simulator does not guarantee that minimum-only repayment will always cost more than every fixed-payment scenario.
 
-### Excluded from Simulation
+### Exclusions and limitations
 
-- Additional purchases after the starting balance
-- Late-payment fees, over-limit fees, annual fees
-- Applicable taxes (e.g. GST on interest and fees)
-- Changes to APR during repayment
-- Balance transfers, cash advances, or introductory rates
+- Interest is modelled monthly; actual issuers may use daily or other calculation methods.
+- Minimum-payment formula is illustrative and should not be used to determine an actual payment due.
+- Additional purchases, late or over-limit charges, annual fees, applicable taxes, and APR changes are not modelled.
+- Payments are assumed to be made on time.
+- Balance transfers, cash advances, and introductory-rate offers are not modelled.
+- Simulations are capped at 600 billing cycles (50 years); capped results may not represent a completed repayment.
+- Geist fonts are loaded from Google Fonts, so the preferred fonts require an internet connection.
 
----
+## Setup
 
-## Test Coverage
+### Prerequisites
 
-Tests are written with **Vitest** and use **independently calculated expected values** (not derived from the implementation itself).
+- Node.js 18 or later
+- npm 9 or later
 
-| Test category | Cases covered |
-|---------------|--------------|
-| Strategy A (full payment) | Grace period zero interest; existing balance interest; zero balance; zero APR |
-| Strategy B (fixed payment) | 11-month/₹2,949.24 independent calculation; schedule consistency; final payment cap; zero APR; insufficient payment detection; zero balance; large payment clears in 1 cycle; APR affects results; payment amount affects results |
-| Strategy C (minimum payment) | Declining payments; month-1 formula; small balance cap; more months than fixed; more interest than fixed; consistency check; zero balance; zero APR; non-negative balances |
-| Integration | All strategies return results; minimum always costs more; full always cheapest; monthly rate formula |
-| Validation | Negative balance; APR > 120%; negative payment; zero APR + zero balance; extreme but valid; over-limit |
-| Edge cases | Very small balance; oversized payment; roundINR floating-point; ₹200 balance |
+### Install and run
 
-Run `npm test` to execute all tests.
+```bash
+npm install
+npm run dev
+```
 
----
+Open [http://localhost:5173](http://localhost:5173).
 
-## Technology Stack
+### Production build
 
-| Layer | Choice | Reason |
-|-------|--------|--------|
-| Framework | React 18 + TypeScript | Type-safe components; broad ecosystem |
-| Build tool | Vite 6 | Fast HMR; simple config |
-| Styling | Tailwind CSS 3 | Utility-first; consistent design tokens |
-| Charting | Recharts 2 | React-native; good AreaChart support |
-| Icons | Lucide React | Lightweight; consistent style |
-| Testing | Vitest | Native Vite integration; Jest-compatible API |
+```bash
+npm run build
+npm run preview
+```
 
----
+### Tests
 
-## Limitations and Known Issues
+```bash
+npm test
+```
 
-1. **Monthly compounding only.** Daily-compounding issuers will have different actual results.
-2. **Minimum payment formula is illustrative.** Real issuer formulas vary; do not rely on Strategy C figures for actual payment planning.
-3. **No fees or taxes.** Actual costs will be higher due to GST (currently 18% on interest/fees in India), late fees, etc.
-4. **APR assumed constant.** Variable-rate cards are not modelled.
-5. **Simulation cap at 600 months.** Extreme inputs (very high APR + very low payment) are capped and flagged.
-6. **No offline support.** Google Fonts requires internet connectivity for optimal rendering.
+The Vitest suite in `src/lib/calculator.test.ts` currently contains **40 test cases** covering the calculation strategies, integration behavior, input validation, and edge cases. Its fixed-payment reference example checks that a ₹50,000 balance at 12% APR with ₹5,000 monthly payments clears in 11 months with ₹2,949.24 interest and ₹52,949.24 total paid. These are test expectations for that specific example, not general repayment estimates.
 
----
+## Technology
+
+| Area | Technology |
+|---|---|
+| UI | React 18, TypeScript |
+| Development and build | Vite 6 |
+| Styling | Tailwind CSS 3 and project-specific CSS |
+| Charts | Recharts 2 |
+| Icons | Lucide React |
+| Tests | Vitest |
+
+## AI-assisted development
+
+- **Google Antigravity:** Initial implementation.
+- **v0:** UI/UX exploration and prototyping.
+- **GitHub Copilot:** Frontend redesign and refinement.
+- **My contributions:** Problem selection, product decisions, prompt direction, testing, evaluation, and iterative improvements.
 
 ## Disclosures
 
-- This tool is for **financial education only**.
-- Results are **estimates** based on a simplified model.
-- This application does **not** provide personalised financial advice.
-- Not affiliated with any bank, card issuer, or financial institution.
-- Actual credit card interest, minimum payments, fees, taxes, and grace-period eligibility depend on your specific card issuer's terms and your individual circumstances.
+- This project is for financial education only and does not provide personalised financial advice.
+- Results are estimates based on the stated simplified model and may differ from actual card costs.
+- Actual interest, minimum payments, fees, applicable taxes, and grace-period eligibility depend on the issuer's terms and the user's circumstances.
+- The project is not affiliated with any bank, card issuer, or financial institution.
