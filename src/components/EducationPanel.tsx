@@ -220,21 +220,29 @@ export function EducationPanel({ results }: Props) {
   ];
 
   return (
-    <div className="card p-6">
-      <h2 className="text-lg font-bold text-slate-900 mb-1">Understand Your Results</h2>
-      <p className="text-xs text-slate-500 mb-4">
-        Explanations tailored to your simulation inputs
-      </p>
+    <section className="education-panel card p-5 sm:p-6" aria-labelledby="education-heading">
+      <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="section-index">Learn the mechanics / 03</p>
+          <h2 id="education-heading" className="mt-1 text-xl font-bold text-slate-900">
+            Understand your results
+          </h2>
+        </div>
+        <p className="max-w-xs text-xs leading-relaxed text-slate-600">
+          Plain-language explanations tailored to this estimate.
+        </p>
+      </div>
 
       <div className="space-y-2">
         {sections.map(section => {
           const isOpen = openSection === section.id;
           return (
-            <div key={section.id} className="border border-slate-100 rounded-xl overflow-hidden">
+            <div key={section.id} className="education-panel__item overflow-hidden rounded-xl border border-slate-200">
               <button
                 type="button"
                 onClick={() => setOpenSection(isOpen ? '' : section.id)}
-                className="w-full flex items-center justify-between px-4 py-3.5 text-left hover:bg-slate-50 transition-colors"
+                aria-expanded={isOpen}
+                className="flex min-h-12 w-full items-center justify-between gap-3 px-4 py-3.5 text-left transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-600"
               >
                 <span className="flex items-center gap-2 font-semibold text-sm text-slate-800">
                   <span>{section.icon}</span>
@@ -247,7 +255,7 @@ export function EducationPanel({ results }: Props) {
                 )}
               </button>
               {isOpen && (
-                <div className="px-4 pb-4 pt-1 border-t border-slate-100">
+                <div className="border-t border-slate-200 px-4 pb-4 pt-3">
                   {section.content(results)}
                 </div>
               )}
@@ -255,6 +263,6 @@ export function EducationPanel({ results }: Props) {
           );
         })}
       </div>
-    </div>
+    </section>
   );
 }

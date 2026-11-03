@@ -1,4 +1,4 @@
-import { CheckCircle, TrendingDown, Clock, IndianRupee } from 'lucide-react';
+import { CheckCircle, TrendingDown, IndianRupee } from 'lucide-react';
 import type { SimulationResults, StrategyResult } from '../lib/calculator';
 import { formatINR, formatINRPaise, formatDuration } from '../lib/calculator';
 
@@ -6,260 +6,267 @@ interface Props {
   results: SimulationResults;
 }
 
+const STRATEGY_META = {
+  full: {
+    code: 'A',
+    shortLabel: 'Full balance',
+    detail: 'Pay the full amount due',
+    icon: <CheckCircle size={18} aria-hidden="true" />,
+    color: 'green',
+  },
+  fixed: {
+    code: 'B',
+    shortLabel: 'Fixed payment',
+    detail: 'Same payment every month',
+    icon: <IndianRupee size={18} aria-hidden="true" />,
+    color: 'graphite',
+  },
+  minimum: {
+    code: 'C',
+    shortLabel: 'Minimum due',
+    detail: 'Illustrative minimum only',
+    icon: <TrendingDown size={18} aria-hidden="true" />,
+    color: 'vermilion',
+  },
+} as const;
+
 export function ComparisonCards({ results }: Props) {
   const { strategyFull, strategyFixed, strategyMinimum, inputs } = results;
+  const strategies = [strategyFull, strategyFixed, strategyMinimum];
+  const maxCost = Math.max(
+    inputs.startingBalance,
+    ...strategies.map(item => Math.max(item.totalPaid, item.totalInterest)),
+    1
+  );
+  const canCompareMinimum = isCompleted(strategyFixed) &&
+    (isCompleted(strategyMinimum) || strategyMinimum.status === 'cap_reached');
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-bold text-slate-900">Repayment Strategy Comparison</h2>
-        <span className="text-xs text-slate-400">Results are estimates</span>
+    <section className="comparison-panel scroll-mt-24" aria-labelledby="comparison-heading">
+      <div className="comparison-heading">
+        <div>
+          <p className="section-index">Cost map / 02</p>
+          <h2 id="comparison-heading">Three ways to clear the balance</h2>
+        </div>
+        <p className="comparison-heading__note">Same starting balance · different outcomes</p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <StrategyCard
-          strategy={strategyFull}
-          startingBalance={inputs.startingBalance}
-          accent="success"
-          icon={<CheckCircle size={18} />}
-          scenarioType={inputs.scenarioType}
-        />
-        <StrategyCard
-          strategy={strategyFixed}
-          startingBalance={inputs.startingBalance}
-          accent="brand"
-          icon={<IndianRupee size={18} />}
-          fixedPayment={inputs.fixedMonthlyPayment}
-          scenarioType={inputs.scenarioType}
-        />
-        <StrategyCard
-          strategy={strategyMinimum}
-          startingBalance={inputs.startingBalance}
-          accent="warning"
-          icon={<TrendingDown size={18} />}
-          scenarioType={inputs.scenarioType}
-        />
+      <div className="cost-legend" aria-label="Cost bar legend">
+        <span><i className="cost-legend__principal" aria-hidden="true" />Principal repaid</span>
+        <span><i className="cost-legend__interest" aria-hidden="true" />Interest charged</span>
       </div>
 
-      {/* Extra cost callout */}
-      {strategyFixed.status === 'ok' && strategyMinimum.status === 'ok' && (
-        <MinimumCostCallout
-          startingBalance={inputs.startingBalance}
+      <div className="comparison-rows">
+        {strategies.map(strategy => (
+          <StrategyRow
+            key={strategy.id}
+            strategy={strategy}
+            fixedPayment={strategy.id === 'fixed' ? inputs.fixedMonthlyPayment : undefined}
+            maxCost={maxCost}
+          />
+        ))}
+      </div>
+
+      <p className="comparison-explanation">
+        Each bar separates principal repaid from interest charged. For capped simulations,
+        accrued interest may not yet be paid; a longer completed bar means a higher total cost.
+      </p>
+
+      {canCompareMinimum && (
+        <MinimumCostInsight
+          monthlyPayment={inputs.fixedMonthlyPayment}
           fixedResult={strategyFixed}
           minimumResult={strategyMinimum}
         />
       )}
-    </div>
+    </section>
   );
 }
 
-// ─── Strategy Card ────────────────────────────────────────────────────────────
-
-type Accent = 'success' | 'brand' | 'warning';
-
-interface CardProps {
-  strategy: StrategyResult;
-  startingBalance: number;
-  accent: Accent;
-  icon: React.ReactNode;
-  fixedPayment?: number;
-  scenarioType: string;
+function isCompleted(strategy: StrategyResult): boolean {
+  return strategy.status === 'ok' ||
+    strategy.status === 'zero_interest' ||
+    strategy.status === 'grace_period' ||
+    strategy.status === 'zero_balance';
 }
 
-const ACCENT_COLORS: Record<Accent, { header: string; badge: string; value: string; border: string }> = {
-  success: {
-    header: 'bg-success-50',
-    badge: 'bg-success-100 text-success-700',
-    value: 'text-success-700',
-    border: 'border-success-200',
-  },
-  brand: {
-    header: 'bg-brand-50',
-    badge: 'bg-brand-100 text-brand-700',
-    value: 'text-brand-700',
-    border: 'border-brand-200',
-  },
-  warning: {
-    header: 'bg-warning-50',
-    badge: 'bg-warning-100 text-warning-700',
-    value: 'text-warning-700',
-    border: 'border-warning-200',
-  },
-};
-
-function StrategyCard({ strategy, startingBalance, accent, icon, fixedPayment, scenarioType }: CardProps) {
-  const colors = ACCENT_COLORS[accent];
-  const extraCost = strategy.totalInterest;
-  const isInsufficient = strategy.status === 'insufficient_payment';
-  const isCapReached = strategy.status === 'cap_reached';
+function StrategyRow({
+  strategy,
+  fixedPayment,
+  maxCost,
+}: {
+  strategy: StrategyResult;
+  fixedPayment?: number;
+  maxCost: number;
+}) {
+  const meta = STRATEGY_META[strategy.id];
+  const insufficient = strategy.status === 'insufficient_payment';
+  const capped = strategy.status === 'cap_reached';
+  const finalCycle = strategy.schedule[strategy.schedule.length - 1];
+  const outstanding = capped ? finalCycle?.closingBalance ?? 0 : 0;
+  const principalPaid = Math.max(0, Math.min(strategy.totalPaid, strategy.totalPaid - strategy.totalInterest));
+  const principalWidth = (principalPaid / maxCost) * 100;
+  const interestWidth = (strategy.totalInterest / maxCost) * 100;
 
   return (
-    <div className={`card overflow-hidden border ${colors.border}`}>
-      {/* Card Header */}
-      <div className={`${colors.header} px-4 py-3 flex items-center gap-2`}>
-        <span className={`${colors.value}`}>{icon}</span>
-        <div className="min-w-0">
-          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-            Strategy {strategy.id === 'full' ? 'A' : strategy.id === 'fixed' ? 'B' : 'C'}
-          </p>
-          <p className="text-sm font-bold text-slate-800 leading-tight">{strategy.label}</p>
+    <article className={`strategy-card comparison-row comparison-row--${meta.color}`}>
+      <div className="comparison-row__identity">
+        <span className="comparison-row__icon">{meta.icon}</span>
+        <div>
+          <p className="comparison-row__eyebrow">STRATEGY {meta.code}</p>
+          <h3>{meta.shortLabel}</h3>
+          <p className="comparison-row__detail">{meta.detail}</p>
+          {fixedPayment !== undefined && (
+            <p className="comparison-row__payment">{formatINR(fixedPayment)} / month</p>
+          )}
         </div>
       </div>
 
-      {/* Card Body */}
-      <div className="px-4 py-4 space-y-3">
-        {/* Sub-label for fixed payment */}
-        {strategy.id === 'fixed' && fixedPayment != null && (
-          <p className="text-xs text-slate-500">
-            ₹{fixedPayment.toLocaleString('en-IN')} per month
-          </p>
-        )}
-        {strategy.id === 'minimum' && (
-          <p className="text-xs text-slate-500">
-            Illustrative formula · actual issuer rules vary
-          </p>
-        )}
-
-        {/* Insufficient payment warning */}
-        {isInsufficient && (
-          <div className="danger-box rounded-lg">
-            <p className="font-semibold mb-1">⚠️ Payment too low</p>
-            <p className="text-xs leading-relaxed">{strategy.statusMessage}</p>
+      <div className="comparison-row__cost">
+        {insufficient ? (
+          <div className="comparison-status comparison-status--danger" role="status">
+            <strong>Payment too low to reduce the balance</strong>
+            <span>{strategy.statusMessage}</span>
           </div>
-        )}
-
-        {/* Cap reached */}
-        {isCapReached && (
-          <div className="disclosure-box rounded-lg">
-            <p className="font-semibold mb-1">⏱ Simulation limit reached</p>
-            <p className="text-xs">{strategy.statusMessage}</p>
+        ) : capped ? (
+          <div className="comparison-status comparison-status--warning" role="status">
+            <strong>Simulation stopped before payoff</strong>
+            <span>{strategy.statusMessage}</span>
           </div>
-        )}
+        ) : strategy.status === 'grace_period' ? (
+          <p className="comparison-row__note comparison-row__note--positive">
+            Possible interest-free period when all issuer conditions are met.
+          </p>
+        ) : strategy.status === 'zero_balance' ? (
+          <p className="comparison-row__note">No balance to repay.</p>
+        ) : null}
 
-        {/* Zero balance */}
-        {strategy.status === 'zero_balance' && (
-          <p className="text-slate-400 text-sm">No balance to repay.</p>
-        )}
-
-        {/* Normal stats */}
-        {!isInsufficient && strategy.status !== 'zero_balance' && (
+        {!insufficient && (
           <>
-            {/* Grace period callout */}
-            {strategy.status === 'grace_period' && (
-              <div className="success-box rounded-lg text-xs leading-relaxed">
-                <strong>✓ Grace period may apply.</strong> If you pay the full statement balance
-                by the due date for a fresh purchase with no prior revolving balance, no interest
-                is charged — provided all your issuer's conditions are met.
+            <div className="comparison-row__figures">
+              <div>
+                <p className="comparison-row__label">{capped ? 'Principal paid' : 'Principal'}</p>
+                <p className="comparison-row__principal">{formatINR(Math.round(principalPaid))}</p>
               </div>
-            )}
-
-            {/* Existing balance note for Strategy A */}
-            {strategy.id === 'full' && scenarioType === 'existing_balance' && (
-              <div className="info-box rounded-lg text-xs">
-                This is an existing revolving balance. Paying it off immediately stops further
-                interest accrual, but one month's interest has already been added.
+              <div>
+                <p className="comparison-row__label">{capped ? 'Paid so far' : 'Total repayment'}</p>
+                <p className="comparison-row__total">{formatINR(strategy.totalPaid)}</p>
               </div>
-            )}
+              <div>
+                <p className="comparison-row__label">{capped ? 'Interest charged so far' : 'Interest paid'}</p>
+                <p className={`comparison-row__interest ${strategy.totalInterest > 0 ? 'is-nonzero' : ''}`}>
+                  {strategy.totalInterest === 0 ? '₹0' : formatINRPaise(strategy.totalInterest)}
+                </p>
+              </div>
+              <div>
+                <p className="comparison-row__label">{capped ? 'Payoff status' : 'Payoff time'}</p>
+                <p className={`comparison-row__duration ${capped ? 'is-capped' : ''}`}>
+                  {capped
+                    ? `Not cleared · ${formatDuration(strategy.months)}`
+                    : strategy.status === 'grace_period'
+                      ? '1 billing cycle'
+                      : strategy.status === 'zero_balance'
+                        ? 'Already clear'
+                        : formatDuration(strategy.months)}
+                </p>
+              </div>
+            </div>
 
-            <Stat
-              label="Total amount repaid"
-              value={formatINR(strategy.totalPaid)}
-              valueClass={colors.value}
-            />
-            <Stat
-              label="Total interest paid"
-              value={strategy.totalInterest === 0 ? '₹0' : formatINRPaise(extraCost)}
-              valueClass={extraCost === 0 ? 'text-success-600' : 'text-danger-600'}
-              subLabel={
-                extraCost > 0 && startingBalance > 0
-                  ? `+${((extraCost / startingBalance) * 100).toFixed(1)}% extra`
-                  : undefined
-              }
-            />
-            <Stat
-              label="Time to clear"
-              value={
-                strategy.months === 0 && strategy.status === 'grace_period'
-                  ? '1 billing cycle'
-                  : formatDuration(strategy.months)
-              }
-              valueClass="text-slate-800"
-              icon={<Clock size={13} className="text-slate-400" />}
-            />
+            <div
+              className="cost-bar"
+              role="img"
+              aria-label={`${meta.shortLabel}: ${formatINR(principalPaid)} principal repaid and ${formatINR(strategy.totalInterest)} interest ${capped ? 'charged so far, not necessarily paid' : 'paid'}`}
+            >
+              <span className="cost-bar__principal" style={{ width: `${principalWidth}%` }} />
+              <span className="cost-bar__interest" style={{ width: `${interestWidth}%` }} />
+            </div>
+            {capped && (
+              <p className="comparison-row__remaining">
+                Outstanding balance: <strong>{formatINR(outstanding)}</strong>
+              </p>
+            )}
           </>
         )}
+        {insufficient && (
+          <div className="comparison-row__figures comparison-row__figures--unavailable">
+            <div>
+              <p className="comparison-row__label">Principal</p>
+              <p className="comparison-row__duration">Not available</p>
+            </div>
+            <div>
+              <p className="comparison-row__label">Total repayment</p>
+              <p className="comparison-row__duration">Not available</p>
+            </div>
+            <div>
+              <p className="comparison-row__label">Interest charged</p>
+              <p className="comparison-row__duration">Not available</p>
+            </div>
+            <div>
+              <p className="comparison-row__label">Payoff time</p>
+              <p className="comparison-row__duration is-capped">Balance will not decrease</p>
+            </div>
+          </div>
+        )}
       </div>
-    </div>
+    </article>
   );
 }
 
-// ─── Stat Row ─────────────────────────────────────────────────────────────────
-
-function Stat({
-  label,
-  value,
-  valueClass,
-  subLabel,
-  icon,
-}: {
-  label: string;
-  value: string;
-  valueClass?: string;
-  subLabel?: string;
-  icon?: React.ReactNode;
-}) {
-  return (
-    <div>
-      <p className="stat-label">{label}</p>
-      <div className="flex items-center gap-1 mt-0.5">
-        {icon}
-        <p className={`stat-value text-xl ${valueClass ?? ''}`}>{value}</p>
-      </div>
-      {subLabel && <p className="text-xs text-danger-500 font-medium mt-0.5">{subLabel}</p>}
-    </div>
-  );
-}
-
-// ─── Minimum Cost Callout ─────────────────────────────────────────────────────
-
-function MinimumCostCallout({
-  startingBalance,
+function MinimumCostInsight({
+  monthlyPayment,
   fixedResult,
   minimumResult,
 }: {
-  startingBalance: number;
+  monthlyPayment: number;
   fixedResult: StrategyResult;
   minimumResult: StrategyResult;
 }) {
   const extraInterest = minimumResult.totalInterest - fixedResult.totalInterest;
   const extraMonths = minimumResult.months - fixedResult.months;
+  const incomplete = minimumResult.status === 'cap_reached';
+  const remaining = minimumResult.schedule.length
+    ? minimumResult.schedule[minimumResult.schedule.length - 1].closingBalance
+    : 0;
 
-  if (extraInterest <= 0 && extraMonths <= 0) return null;
+  if (!incomplete && extraInterest <= 0 && extraMonths <= 0) return null;
 
   return (
-    <div className="bg-gradient-to-r from-warning-50 to-orange-50 border border-warning-200 rounded-xl p-4">
-      <p className="text-sm font-bold text-warning-800 mb-1">
-        💡 Minimum payment vs fixed payment comparison
-      </p>
-      <div className="grid grid-cols-2 gap-3 text-sm">
-        {extraInterest > 0 && (
-          <div>
-            <p className="text-xs text-warning-600 font-medium uppercase tracking-wider">Extra interest</p>
-            <p className="font-bold text-warning-900 text-lg">{formatINR(Math.round(extraInterest))}</p>
-            <p className="text-xs text-warning-600">
-              more than the fixed strategy
-              {startingBalance > 0 && ` (+${((extraInterest / startingBalance) * 100).toFixed(0)}%)`}
+    <aside className="minimum-insight" role="status" aria-live="polite">
+      <span className="minimum-insight__mark" aria-hidden="true">!</span>
+      <div className="minimum-insight__body">
+        <p className="minimum-insight__eyebrow">The difference / minimum vs fixed</p>
+        {incomplete ? (
+          <>
+            <h3>The minimum-payment estimate has not reached payoff.</h3>
+            <p>
+              It has accrued {formatINR(Math.round(minimumResult.totalInterest))} in interest so far,
+              with {formatINR(remaining)} still outstanding. A final payoff time or cost cannot be
+              estimated from a capped simulation.
             </p>
-          </div>
-        )}
-        {extraMonths > 0 && (
-          <div>
-            <p className="text-xs text-warning-600 font-medium uppercase tracking-wider">Extra time</p>
-            <p className="font-bold text-warning-900 text-lg">{formatDuration(extraMonths)}</p>
-            <p className="text-xs text-warning-600">longer to clear debt</p>
-          </div>
+          </>
+        ) : (
+          <>
+            <h3>Paying the minimum costs more over time.</h3>
+            <div className="minimum-insight__stats">
+              {extraInterest > 0 && (
+                <p>
+                  <strong>{formatINR(Math.round(extraInterest))}</strong>
+                  <span>additional interest</span>
+                </p>
+              )}
+              {extraMonths > 0 && (
+                <p>
+                  <strong>{formatDuration(extraMonths)}</strong>
+                  <span>additional time to repay</span>
+                </p>
+              )}
+            </div>
+            <p className="minimum-insight__footnote">
+              Difference from paying {formatINR(monthlyPayment)} monthly. Minimum formula is illustrative; issuer rules vary.
+            </p>
+          </>
         )}
       </div>
-    </div>
+    </aside>
   );
 }

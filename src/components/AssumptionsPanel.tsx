@@ -9,20 +9,27 @@ export function AssumptionsPanel() {
       <button
         type="button"
         onClick={() => setOpen(v => !v)}
+        aria-expanded={open}
+        aria-controls="simulation-assumptions-content"
         className="w-full flex items-center justify-between px-5 py-4 hover:bg-slate-50 transition-colors"
       >
         <div className="flex items-center gap-2.5">
           <span className="text-base">🔢</span>
           <div className="text-left">
-            <p className="text-sm font-bold text-slate-800">Simulation Assumptions & Limitations</p>
+            <p id="simulation-assumptions-heading" className="text-sm font-bold text-slate-800">Simulation Assumptions & Limitations</p>
             <p className="text-xs text-slate-500">Important disclosures — click to expand</p>
           </div>
         </div>
         {open ? <ChevronUp size={16} className="text-slate-400 flex-shrink-0" /> : <ChevronDown size={16} className="text-slate-400 flex-shrink-0" />}
       </button>
 
-      {open && (
-        <div className="border-t border-slate-100 px-5 py-5 space-y-4 text-sm text-slate-700">
+        <div
+          id="simulation-assumptions-content"
+          role="region"
+          aria-labelledby="simulation-assumptions-heading"
+          hidden={!open}
+          className="border-t border-slate-100 px-5 py-5 space-y-4 text-sm text-slate-700"
+        >
           {/* What IS modelled */}
           <div>
             <p className="font-semibold text-slate-900 mb-2">What this simulation models</p>
@@ -96,7 +103,6 @@ export function AssumptionsPanel() {
             <p>closing  = pre_pay − payment</p>
           </div>
         </div>
-      )}
     </div>
   );
 }
